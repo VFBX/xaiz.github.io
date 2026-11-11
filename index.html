@@ -1041,55 +1041,141 @@
       function stripUrls(text) {
         return String(text).replace(/https?:\/\/\S+/gi, "[link đã ẩn vì bảo mật]").replace(/www\.\S+/gi, "[link đã ẩn vì bảo mật]");
       }
+      function normText(s) {
+        return String(s || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/g, "d");
+      }
       function aiReply(raw) {
         var msg = String(raw || "");
-        var low = msg.toLowerCase();
-        /* 1) Hỏi link/code của script TRONG MỤC hoặc bí mật admin -> từ chối, hướng dẫn bấm nút */
-        var asksSecret = /(mật khẩu|mat khau|password|tài khoản admin|tai khoan admin|đăng nhập admin|dang nhap admin)/i.test(msg);
-        if (asksSecret) return "🔒 Phần này mình không chia sẻ được. Khu vực Admin chỉ dành cho chủ trang thôi bạn nhé.";
+        var n = normText(msg);
+        function has(re) { return re.test(n); }
+
+        /* 1) Bí mật admin -> từ chối */
+        if (has(/(mat khau|password|tai khoan admin|dang nhap admin)/)) {
+          return "🔒 Phần này mình không chia sẻ được. Khu vực Admin chỉ dành cho chủ trang thôi bạn nhé.";
+        }
+        /* 2) Xin link/code của script TRONG KHO -> từ chối, hướng dẫn bấm nút trên thẻ */
         var matched = null;
         posts.forEach(function (p) {
-          if ((p.name && low.indexOf(p.name.toLowerCase()) >= 0) || (p.game && low.indexOf(p.game.toLowerCase()) >= 0 && /(link|code|script)/i.test(msg))) matched = p;
+          var pn = normText(p.name), pg = normText(p.game);
+          if ((pn && n.indexOf(pn) >= 0) || (pg && pg.length > 2 && n.indexOf(pg) >= 0 && /(link|code|script|lay|xin|tai)/.test(n))) matched = p;
         });
-        /* Xin LINK thì luôn chặn; xin CODE chỉ chặn khi nhắc tới script trong kho / trên web.
-           Nhờ TẠO / VIẾT script mẫu thì không chặn — xử lý ở nhánh tạo mẫu bên dưới. */
-        var asksLink = /(link vượt|link vuot|link chính|link chinh|link phụ|link phu|xin link|lấy link|lay link|đưa link|dua link|link của|link cua|cho.*link)/i.test(msg);
-        var asksCatalogCode = /(code|mã nguồn|ma nguon)/i.test(msg) && (!!matched || /(trong kho|trên web|tren web|đã đăng|da dang|của web)/i.test(msg));
-        if (asksLink || asksCatalogCode || (matched && /(link|code|lấy|lay|xin)/i.test(msg))) {
-          var name = matched ? "“" + matched.name + "”" : "script bạn cần";
-          return "🔒 Mình không đưa link hay code của " + name + " qua chat được.\n\nCách lấy chính thức: tìm thẻ " + name + " ở danh sách trên trang rồi bấm nút LINK VƯỢT (xanh lá) hoặc LINK CHÍNH (vàng) trên đúng thẻ đó là lấy được script ngay nhé!";
+        var asksLink = /(link vuot|link chinh|link phu|xin link|lay link|dua link|link cua|cho.*link|link dau)/.test(n);
+        var asksCatalogCode = /(code|ma nguon)/.test(n) && (!!matched || /(trong kho|tren web|da dang|cua web)/.test(n));
+        if (asksLink || asksCatalogCode || (matched && /(link|code|lay|xin|tai)/.test(n))) {
+          var cname = matched ? "“" + matched.name + "”" : "script bạn cần";
+          return "🔒 Mình không đưa link hay code của " + cname + " qua chat được.\n\nCách lấy chính thức: tìm thẻ " + cname + " ở danh sách trên trang rồi bấm nút LINK VƯỢT (xanh lá) hoặc LINK CHÍNH (vàng) trên đúng thẻ đó là lấy được script ngay nhé!";
         }
-        if (/(bỏ qua|bo qua|jailbreak|chế độ nhà phát triển|developer mode|giả vờ|đóng vai)/i.test(msg) && /(link|code|mật khẩu|script)/i.test(msg)) {
+        if (has(/(bo qua|jailbreak|developer mode|gia vo|dong vai)/) && has(/(link|code|mat khau|script)/)) {
           return "🔒 Dù hỏi kiểu nào mình cũng không đưa link/code trong kho hay thông tin Admin ra chat được. Bạn bấm nút LINK VƯỢT / LINK CHÍNH trên thẻ script ở trang chủ là lấy được nhé!";
         }
-        /* 2) Tạo script MẪU mới (không phải script trong kho) */
-        if (/(fly|bay)/i.test(msg) && /(script|tạo|tao|viết|viet|cho)/i.test(msg)) {
+        /* 3) Tạo script MẪU mới (không phải script trong kho) */
+        if (has(/(fly|bay)/) && has(/(script|tao|viet|cho|mau|code)/)) {
           return "Đây là script Fly MẪU cơ bản mình viết mới cho bạn tham khảo:\n```lua\n-- Fly mẫu (bản tĩnh XAIZ AI)\nlocal player = game.Players.LocalPlayer\nlocal char = player.Character or player.CharacterAdded:Wait()\nlocal hrp = char:WaitForChild(\"HumanoidRootPart\")\nlocal bv = Instance.new(\"BodyVelocity\", hrp)\nbv.MaxForce = Vector3.new(1e5, 1e5, 1e5)\nbv.Velocity = Vector3.new(0, 30, 0) -- bay lên, chỉnh số này để đổi tốc độ\ntask.wait(3)\nbv:Destroy() -- hạ xuống sau 3 giây\n```\nMuốn giữ bay lâu hơn thì bỏ dòng task.wait và bv:Destroy, rồi tự thêm nút tắt nhé.";
         }
-        if (/esp/i.test(msg) && /(script|tạo|tao|viết|viet|cho|mẫu|mau)/i.test(msg)) {
+        if (has(/esp/) && has(/(script|tao|viet|cho|mau|code)/)) {
           return "Đây là script ESP MẪU đơn giản mình viết mới cho bạn:\n```lua\n-- ESP mẫu: hiện Highlight quanh người chơi khác\nfor _, plr in ipairs(game.Players:GetPlayers()) do\n    if plr ~= game.Players.LocalPlayer and plr.Character then\n        local hl = Instance.new(\"Highlight\")\n        hl.FillColor = Color3.fromRGB(255, 60, 60)\n        hl.Parent = plr.Character\n    end\nend\n```\nĐây chỉ là mẫu học cách hoạt động — script đầy đủ trong kho thì bấm nút trên thẻ script nhé.";
         }
-        if (/(aimbot|aimlock)/i.test(msg)) {
-          if (/(là gì|la gi|nghĩa|giải thích)/i.test(msg)) return "🎯 Aimbot / Aimlock là tính năng tự khóa tâm ngắm vào đối thủ trong game bắn súng, giúp ngắm nhanh và chuẩn hơn. Trên XAIZ SCRIPT, bạn tìm script Aimbot theo tên game rồi bấm LINK VƯỢT trên thẻ để lấy nhé.";
+        if (has(/(speed|toc do|chay nhanh)/) && has(/(script|tao|viet|cho|mau|code)/)) {
+          return "Đây là script Speed MẪU (tăng tốc chạy) mình viết mới cho bạn:\n```lua\n-- Speed mẫu: chỉnh WalkSpeed của nhân vật\nlocal player = game.Players.LocalPlayer\nlocal char = player.Character or player.CharacterAdded:Wait()\nlocal hum = char:WaitForChild(\"Humanoid\")\nhum.WalkSpeed = 50 -- mặc định là 16, tăng số này chạy càng nhanh\n```\nLưu ý: nhiều game sẽ reset WalkSpeed khi bạn hồi sinh, cần chạy lại script sau mỗi lần chết nhé.";
+        }
+        if (has(/noclip/) && has(/(script|tao|viet|cho|mau|code)/)) {
+          return "Đây là script Noclip MẪU (đi xuyên tường) mình viết mới cho bạn:\n```lua\n-- Noclip mẫu: tắt va chạm của nhân vật mỗi frame\ngame:GetService(\"RunService\").Stepped:Connect(function()\n    local char = game.Players.LocalPlayer.Character\n    if char then\n        for _, part in ipairs(char:GetDescendants()) do\n            if part:IsA(\"BasePart\") then part.CanCollide = false end\n        end\n    end\nend)\n```\nMẫu này bật là xuyên tường luôn; muốn có nút bật/tắt thì nói mình viết thêm cho nhé.";
+        }
+        if (has(/(aimbot|aimlock)/)) {
+          if (has(/(la gi|nghia|giai thich|hoat dong)/)) return "🎯 Aimbot / Aimlock là tính năng tự khóa tâm ngắm vào đối thủ trong game bắn súng, giúp ngắm nhanh và chuẩn hơn. Trên XAIZ SCRIPT, bạn tìm script Aimbot theo tên game rồi bấm LINK VƯỢT trên thẻ để lấy nhé.";
           return "🎯 Mình có thể giải thích cách Aimbot hoạt động, còn script Aimbot đầy đủ thì bạn tìm theo tên game trên trang và bấm nút LINK VƯỢT / LINK CHÍNH trên thẻ script để lấy nhé — mình không đưa code trong kho qua chat được.";
         }
-        if (/(cách lấy|lay script|lấy script|how to get|tải script|download)/i.test(msg)) {
+        /* 4) Hướng dẫn dùng trang */
+        if (has(/(cach lay|lay script|how to get|tai script|download|get script)/)) {
           return "Cách lấy script trên XAIZ SCRIPT:\n1️⃣ Tìm script bằng ô tìm kiếm (ghi tiếng Anh) hoặc lọc theo game.\n2️⃣ Bấm nút LINK VƯỢT (xanh lá) trên thẻ script để lấy.\n3️⃣ Chưa có Link Vượt thì bấm LINK CHÍNH (vàng).\n4️⃣ Đọc khung GHI CHÚ màu vàng dưới thẻ nếu có, để dùng đúng cách nhé!";
         }
-        if (/(xin chào|hello|hi\b|chào)/i.test(msg)) return "Chào bạn! 👋 Mình là XAIZ AI bản tĩnh. Bạn hỏi về cách lấy script, nhờ tạo script mẫu (Fly, ESP…), hay hỏi đáp thường ngày đều được. Gõ thử “tạo script Fly” xem nhé!";
+        if (has(/(cach chay|chay script|executor|delta|fluxus|krnl|arceus|codex|hydrogen|inject|dan code|paste|dung script nhu nao|su dung script)/)) {
+          return "Cách chạy script Roblox bằng executor:\n1️⃣ Mở executor của bạn (ví dụ Delta, Fluxus…) và vào đúng game cần dùng.\n2️⃣ Lấy code: bấm LINK VƯỢT / LINK CHÍNH trên thẻ script ở trang này.\n3️⃣ Dán toàn bộ code vào ô nhập của executor.\n4️⃣ Bấm nút Execute/Inject (thường là ▶ hoặc 💉) và chờ menu script hiện trong game.\n⚠️ Chỉ chạy 1 script 1 lần; nếu game vừa cập nhật, script cũ có thể cần chờ bản mới.";
+        }
+        if (has(/(loi|khong chay|khong hoat dong|vang|crash|khong mo duoc|khong hien|khong len menu)/) && has(/(script|game|roblox|executor)/)) {
+          return "Script không chạy thì bạn kiểm tra theo thứ tự này:\n1️⃣ Đã bấm Execute trong executor chưa, và executor đã inject vào game chưa?\n2️⃣ Game vừa update thì script thường lỗi — chờ Admin đăng bản mới.\n3️⃣ Copy thiếu code cũng gây lỗi: bấm lấy lại từ LINK VƯỢT / LINK CHÍNH rồi dán lại toàn bộ.\n4️⃣ Thoát hẳn game, vào lại rồi chạy script 1 lần duy nhất.\n5️⃣ Đọc khung GHI CHÚ dưới thẻ script — vài script cần bật/tắt thêm bước riêng.\nVẫn không được thì nhắn mình tên script + tên game, mình hướng dẫn tiếp.";
+        }
+        if (has(/(hop qua|mo qua|qua tang)/)) {
+          return "🎁 Nút HỘP QUÀ ở đầu trang sẽ mở ngẫu nhiên 1 phần quà bất ngờ cho bạn. Bấm thử xem hôm nay bạn được quà gì nhé!";
+        }
+        if (has(/(ngau nhien|random)/)) {
+          return "🎲 Nút NGẪU NHIÊN ở đầu trang sẽ xáo trộn lại thứ tự các thẻ script trên trang, giúp bạn khám phá script mới. Bấm là trộn ngay, không mất dữ liệu gì đâu.";
+        }
+        if (has(/(nhac|bai hat|song)/)) {
+          return "🎵 Nhạc nền của trang là “Nơi Này Có Anh” — Sơn Tùng M-TP. Bấm nút ▶ ở thanh nhạc đầu trang để phát/dừng nhé.";
+        }
+        if (has(/(youtube|tiktok|kenh)/)) {
+          return "Kênh chính thức của XAIZ SCRIPT có nút ở ngay đầu trang và cuối trang: ▶ YouTube và ♪ TikTok. Bấm vào là tới kênh, có video hướng dẫn và thông báo script mới mỗi ngày.";
+        }
+        /* 5) Hỏi về script/game trong kho: tìm theo từ khóa trong câu hỏi */
+        if (has(/(script|game)/)) {
+          if (!posts.length) return "Hiện kho đang trống, Admin chưa đăng script nào. Bạn quay lại sau nhé — Admin cập nhật script mới mỗi ngày, hoặc hỏi mình cách tạo script mẫu (Fly, ESP, Speed, Noclip) trong lúc chờ cũng được!";
+          if (has(/(danh sach|liet ke|tat ca script|co script nao|nhung script nao|script moi nhat)/)) {
+            var list0 = posts.slice(0, 8).map(function (p) { return "• " + p.name + (p.game ? " (" + p.game + ")" : ""); }).join("\n");
+            return "Trong kho hiện có " + posts.length + " script, mới nhất gồm:\n" + list0 + "\n\nMuốn lấy script nào, bấm nút LINK VƯỢT / LINK CHÍNH trên đúng thẻ của nó nhé!";
+          }
+          var stop = ["script", "game", "cho", "minh", "ban", "co", "khong", "nao", "gi", "xin", "lay", "tim", "kiem", "trong", "tren", "web", "trang", "nay", "cua", "va", "la", "di", "voi", "muon", "hay", "ve", "the", "lam", "sao", "danh", "sach", "liet", "moi", "nhat", "tong", "hop"];
+          var toks = n.replace(/[^a-z0-9 ]/g, " ").split(/\s+/).filter(function (w) { return w.length >= 3 && stop.indexOf(w) < 0; });
+          var hits = [];
+          posts.forEach(function (p) {
+            var hay = normText((p.name || "") + " " + (p.game || ""));
+            var score = 0;
+            toks.forEach(function (t) { if (hay.indexOf(t) >= 0) score++; });
+            if (score > 0) hits.push({ p: p, s: score });
+          });
+          hits.sort(function (a, b) { return b.s - a.s; });
+          if (!hits.length) {
+            var list = posts.slice(0, 8).map(function (p) { return "• " + p.name + (p.game ? " (" + p.game + ")" : ""); }).join("\n");
+            return "Mình chưa thấy script nào khớp với câu hỏi của bạn trong kho. Kho hiện có " + posts.length + " script:\n" + list + "\n\nBạn thử gõ tên game bằng tiếng Anh vào ô tìm kiếm phía trên để tìm chuẩn hơn nhé!";
+          }
+          var top = hits.slice(0, 5).map(function (h) { return "• " + h.p.name + (h.p.game ? " — game: " + h.p.game : ""); }).join("\n");
+          return "Tìm thấy " + hits.length + " script khớp với câu hỏi của bạn:\n" + top + "\n\nCuộn xuống danh sách, tìm đúng thẻ rồi bấm LINK VƯỢT / LINK CHÍNH trên thẻ để lấy script nhé!";
+        }
+        /* 6) Chào hỏi — CHỈ khi tin nhắn ngắn và đúng là lời chào, không kèm câu hỏi khác */
+        var words = n.trim().split(/\s+/).filter(function (w) { return !!w; });
+        if (words.length <= 4 && has(/(xin chao|^chao|hello|^hi$|^hi |^hey|alo)/) && !has(/(script|game|link|cach|giup|hoi|lam)/)) {
+          return "Chào bạn! 👋 Bạn cứ hỏi thẳng điều cần tìm nhé — ví dụ: “có script Blox Fruits không?”, “tạo script Fly”, “cách chạy script”, mình trả lời ngay.";
+        }
+        if (has(/(cam on|thank|tks)/)) return "Không có gì nè! 😊 Cần tìm script hay hỏi thêm gì thì cứ nhắn mình nhé.";
+        if (has(/(tam biet|bye|ngu ngon|good ?night|di ngu)/)) return "Tạm biệt bạn nhé! 👋 Khi nào cần script mới thì quay lại, mình vẫn ở đây.";
+        if (has(/(ban la ai|ten gi|ban ten|ai tao|admin la ai|chu web|xaiz la gi|xaiz script la)/)) {
+          return "Mình là XAIZ AI, trợ lý chat ngay trên trang XAIZ SCRIPT — kho script Roblox của Admin XAIZ. Mình giúp bạn tìm script trong kho, hướng dẫn lấy/chạy script, sửa lỗi thường gặp và viết script mẫu đơn giản. Kênh YouTube/TikTok chính thức có nút ở đầu trang nhé!";
+        }
+        if (has(/(giup|help|ban lam duoc gi|hoi duoc gi|chuc nang)/)) {
+          return "Mình giúp được những việc này nè:\n🔎 Tìm script trong kho theo tên game (hỏi “có script … không?”)\n🔗 Hướng dẫn cách lấy script và cách chạy bằng executor\n🛠 Gỡ lỗi script không chạy / không hiện menu\n✍️ Viết script mẫu: Fly, ESP, Speed, Noclip\n🧮 Tính toán nhanh và trả lời giờ/ngày\nBạn hỏi 1 câu cụ thể là mình trả lời ngay!";
+        }
+        if (has(/(may gio|bay gio la|gio la may)/)) {
+          var now = new Date(); var hh = now.getHours(); var mm2 = now.getMinutes(); if (mm2 < 10) mm2 = "0" + mm2;
+          return "🕐 Bây giờ là " + hh + ":" + mm2 + " trên máy của bạn nhé.";
+        }
+        if (has(/(ngay may|hom nay.*(ngay|thu)|thu may|ngay bao nhieu)/)) {
+          var dnow = new Date(); var days = ["Chủ Nhật", "Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ Sáu", "Thứ Bảy"];
+          return "📅 Hôm nay là " + days[dnow.getDay()] + ", ngày " + dnow.getDate() + "/" + (dnow.getMonth() + 1) + "/" + dnow.getFullYear() + " nhé.";
+        }
+        if (has(/(cuoi|joke|hai huoc|do vui|ke chuyen)/)) {
+          var jokes = [
+            "😂 Vì sao lập trình viên thích bóng tối?\nVì light thu hút bug (lỗi)!",
+            "😂 Script hỏi executor: “Sao anh chạy tôi hoài vậy?”\nExecutor đáp: “Vì em là code, không chạy thì để làm cảnh à!”",
+            "😂 Có 10 loại người trên đời: người hiểu hệ nhị phân và người không hiểu.",
+            "😂 Vì sao game thủ không sợ ma?\nVì ma mà lag 300 ping thì cũng thua thôi!"
+          ];
+          return jokes[chatHistory.length % jokes.length];
+        }
         var math = msg.match(/(-?\d+(?:[.,]\d+)?)\s*([\+\-\*\/x×:])\s*(-?\d+(?:[.,]\d+)?)/);
         if (math) {
           var a = parseFloat(math[1].replace(",", ".")), b = parseFloat(math[3].replace(",", ".")), op = math[2], r;
           if (op === "+") r = a + b; else if (op === "-") r = a - b;
           else if (op === "/" || op === ":") r = b === 0 ? null : a / b; else r = a * b;
           if (r !== null) return "Kết quả: " + a + " " + op + " " + b + " = " + (Math.round(r * 10000) / 10000) + " nhé! 🧮";
+          return "Không chia cho 0 được đâu bạn ơi! 🧮";
         }
-        if (/(có.*script|script.*nào|danh sách|game nào)/i.test(msg)) {
-          if (!posts.length) return "Hiện kho đang trống, Admin chưa đăng script nào. Bạn quay lại sau hoặc mở Hộp Quà khi có script mới nhé!";
-          var names = posts.slice(0, 8).map(function (p) { return "• " + p.name + (p.game ? " (" + p.game + ")" : ""); }).join("\n");
-          return "Trong kho hiện có " + posts.length + " script, mới nhất gồm:\n" + names + "\n\nMuốn lấy script nào, bấm nút LINK VƯỢT / LINK CHÍNH trên đúng thẻ của nó nhé!";
-        }
-        return "Mình là XAIZ AI bản tĩnh nên trả lời tốt nhất các câu về: cách lấy script, tạo script mẫu (thử gõ “tạo script Fly” hoặc “script ESP mẫu”), giới thiệu script trong kho và hỏi đáp đơn giản. Bạn hỏi cụ thể hơn giúp mình nhé! 🤖";
+        /* 7) Ngoài các chủ đề trên: nhận câu hỏi, gợi ý đúng hướng thay vì chào lại */
+        var fallbacks = [
+          "Câu này mình chưa có sẵn đáp án chuẩn trong bản tĩnh 🤔 Bạn thử hỏi mình về: tìm script theo game (“có script Blox Fruits không?”), cách lấy/chạy script, script bị lỗi, hoặc nhờ viết script mẫu (Fly, ESP, Speed, Noclip) — mấy chủ đề đó mình trả lời ngay được.",
+          "Ý này hơi ngoài kho dữ kiện của mình rồi 😅 Gần nhất mình giúp được là: gõ “có script + tên game” để mình tìm trong kho, hoặc hỏi “cách chạy script”, “script không chạy” — bạn thử 1 trong 2 hướng đó nhé!",
+          "Mình là AI bản tĩnh nên chỉ trả lời chắc các câu về trang này và script Roblox thôi. Bạn hỏi cụ thể kiểu “tạo script ESP mẫu” hoặc “có script game … không?” là mình đáp ngay, khỏi vòng vo."
+        ];
+        return fallbacks[chatHistory.length % fallbacks.length];
       }
       function addBubble(role, text) {
         var body = $("chatBody");
