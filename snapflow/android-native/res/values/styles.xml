@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="XaizTheme" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/xaiz_bg</item>
+        <item name="android:textColor">@color/xaiz_text</item>
+        <item name="android:colorAccent">@color/xaiz_blue</item>
+    </style>
+</resources>

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">SnapFlow AI</string>
+    <string name="company_name">SnapFlow Studio</string>
+    <string name="app_tagline">Tải video không logo • HD sắc nét</string>
+    <string name="about">SnapFlow AI — Sản phẩm của SnapFlow Studio. Tải video TikTok, Facebook, Instagram, X, YouTube Shorts không logo, chất lượng HD. Mọi chức năng chạy trong app, không mở trình duyệt.</string>
+    <string name="paste_hint">Dán link TikTok / Facebook / Instagram / X / YouTube…\nDán nhiều link, mỗi link 1 dòng, app lấy lần lượt.</string>
+    <string name="paste">Dán</string>
+    <string name="fetch">⚡ Lấy link tải</string>
+    <string name="clear">Xóa</string>
+    <string name="fetching">Đang lấy link tải…</string>
+    <string name="no_link">Chưa có link. Hãy dán link video rồi bấm “Lấy link tải”.</string>
+    <string name="pasted">Đã dán link vào ô.</string>
+    <string name="no_clipboard">Bộ nhớ tạm chưa có link nào.</string>
+    <string name="download_started">Đã bắt đầu tải, xem trong thư mục Downloads / SnapFlow AI nhé.</string>
+    <string name="history_title">Lịch sử đã lấy link</string>
+    <string name="history_empty">Chưa có lịch sử. Link lấy thành công sẽ lưu ở đây.</string>
+    <string name="platforms">TikTok • Facebook • Instagram • X • YouTube Shorts</string>
+</resources>

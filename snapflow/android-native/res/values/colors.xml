@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="xaiz_bg">#FFFFFF</color>
+    <color name="xaiz_blue">#1E88E5</color>
+    <color name="xaiz_dark_blue">#0D47A1</color>
+    <color name="xaiz_light_blue">#E3F2FD</color>
+    <color name="xaiz_text">#0F172A</color>
+    <color name="xaiz_muted">#64748B</color>
+</resources>
