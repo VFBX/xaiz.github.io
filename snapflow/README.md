@@ -15,7 +15,7 @@ Bản web tĩnh (1 file `index.html`, trắng-xanh, gọn gàng):
 
 ## App Android — SnapFlow AI v1.3 (bản chính)
 
-- APK: `SnapFlow-AI-v1.3.apk` — 37 KB, đã ký, package `com.xaiz.aidownload`, versionCode 4
+- APK: `SnapFlow-AI-v1.3.apk` — 37 KB, đã ký, package `com.xaiz.aidownload`, versionCode 4 (file APK đính kèm trong chat với Muse; repo này chỉ chứa mã nguồn, chưa chứa file APK vì GitHub không nhận file nhị phân qua công cụ đẩy hiện tại)
 - Cài đè lên AI Download v1.1 / SnapFlow v1.2 không mất dữ liệu
 - Mở web app trong WebView, cầu nối `SnapFlow` / `SnapFlowStudio` / `AIDownload` tải file thật về `Downloads / SnapFlow AI`
 - Tải hàng loạt tối đa 20 link, xem trước, lịch sử + yêu thích
